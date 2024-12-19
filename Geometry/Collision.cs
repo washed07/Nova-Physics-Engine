@@ -1,17 +1,18 @@
+namespace Nova.Geometry;
 #nullable enable
 using System.Collections.Generic;
 using System.Linq;
 using Nova.Numerics;
 using Nova.Bodies;
-
-namespace Nova.Geometry;
+using System.ComponentModel;
+using System;
 
 public static class Collision
 {
     public class Mtv // Minimum Translation Vector
         (Vect axis, float overlap)
     {
-        public Vect  Axis    { get; set; } = axis;
+        public Vect Axis { get; set; } = axis;
         public float Depth { get; set; } = overlap;
     }
 
@@ -61,11 +62,13 @@ public static class Collision
         {
             foreach (RigidBody bodyB in Bodies)
             {
-                if (bodyA == bodyB) { continue; }
+                if (bodyA == bodyB)
+                { continue; }
                 Vect pair = new(bodyA.GetHashCode(), bodyB.GetHashCode());
                 Vect reversePair = new(bodyB.GetHashCode(), bodyA.GetHashCode());
 
-                if (resolved.Contains(pair) || resolved.Contains(reversePair)) { continue; }
+                if (resolved.Contains(pair) || resolved.Contains(reversePair))
+                { continue; }
                 resolved.Add(pair);
                 resolved.Add(reversePair);
 
@@ -94,7 +97,69 @@ public static class Collision
                 bodyB.Move(-translation.Axis * translation.Depth * f * f);
             }
             bodyA.ResetVelocity();
-            bodyB.ResetVelocity(); 
+            bodyB.ResetVelocity();
         }
+    }
+
+    public static bool Check(Vect[] polyVertsA, Vect[] polyVertsB)
+    {
+        for (int i = 0; i < polyVertsA.Length; i++)
+        {
+            Vect p1 = polyVertsA[i];
+            Vect p2 = polyVertsA[(i + 1) % polyVertsA.Length];
+            Vect normal = (p2 - p1).Perpendicular().Normalize();
+
+            Num minA = Num.MaxF;
+            Num maxA = Num.MinF;
+            foreach (Vect vert in polyVertsA)
+            {
+                Num projection = Vect.Dot(vert, normal);
+                minA = Num.Min(minA, projection);
+                maxA = Num.Max(maxA, projection);
+            }
+
+            Num minB = Num.MaxF;
+            Num maxB = Num.MinF;
+            foreach (Vect vert in polyVertsB)
+            {
+                Num projection = Vect.Dot(vert, normal);
+                minB = Num.Min(minB, projection);
+                maxB = Num.Max(maxB, projection);
+            }
+
+            if (maxA < minB || maxB < minA)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static bool CheckAll(List<Vect[]> Verts)
+    {
+        for (int i = 0; i < Verts.Count; i++)
+        {
+            for (int j = i + 1; j < Verts.Count; j++)
+            {
+                if (Check(Verts[i], Verts[j]))
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public static bool CheckAllObjects(List<object> objects)
+    {
+        List<Vect[]> Verts = [];
+        foreach (object obj in objects)
+        {
+            if (obj is RigidBody body)
+            {
+                Verts.Add(body.Polygon.Vertices);
+            }
+        }
+        return CheckAll(Verts);
     }
 }

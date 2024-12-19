@@ -6,27 +6,27 @@ using Nova.Bodies;
 using Nova.Geometry;
 using Nova.Numerics;
 using Nova.Physics;
-using Nova.Demos;
+using Nova.Physics.Generators;
+using System.ComponentModel.DataAnnotations;
 
 namespace Nova;
 
 public class NovaEngine
 {
-    private static readonly Num TicksPerSecond = 144;
-    private static readonly Num Speed          = 1;
+    private static readonly Num TicksPerSecond = 1;
+    private static readonly Num Speed          =  1;
     private static readonly Num Iterations     = 1;
 
     private NovaPhysics _physics;
     private Repository _repository;
-    public Controller Controller;
-    private Num     _runtime = 0;
-    private Num     _timer   = 0;
+    private readonly TimeSpan _runtime = TimeSpan.Zero;
+    private TimeSpan _timer   = TimeSpan.Zero;
 
-    private static Num TimeStep => 1 / TicksPerSecond / Iterations * Speed;
+    private static TimeSpan TickRate => new(1000000 / TicksPerSecond / Iterations * Speed);
 
     public List<RigidBody> Bodies { get; set; } = 
         [
-            new RigidBody(Shape.Rect(20, 20), (100, 100), 100, 1),
+            new RigidBody(Shape.Rect(20, 20), (50, 00), 100, 1),
             new RigidBody(Shape.Rect(20, 20), (200, 100), 100, 1),
             new RigidBody(Shape.Rect(20, 20), (300, 100), 100, 1),
             new RigidBody(Shape.Rect(500, 20), (100, 400), -1, 1),
@@ -38,7 +38,7 @@ public class NovaEngine
     {
         _physics = new NovaPhysics(this);
         _repository = new Repository();
-        Controller = new Controller(Bodies[0]);
+       
         foreach (RigidBody body in Bodies) { body.Initialize(); }
     }
 
@@ -47,13 +47,14 @@ public class NovaEngine
         // Load content
     }
 
-    public void Update(Num deltaTime)
+    public void Update(TimeSpan elapsedTime)
     {
-        _timer += deltaTime;
-        if (!(_timer > TimeStep)) { return; }
+        _timer = _timer.Add(elapsedTime);
+        Console.WriteLine(_timer);
+        if (!(_timer > TickRate)) { return; }
 
-        _timer   =  0;
-        _runtime += TimeStep;
+        _timer   =  TimeSpan.Zero;
+        _runtime.Add(TickRate);
 
         for (int _Iteration = 0; _Iteration < Iterations; _Iteration++) 
         { 
@@ -64,10 +65,9 @@ public class NovaEngine
 
         foreach (RigidBody body in Bodies) // Integrate particle physics
         {
-            Controller.Move(1);
-            body.Integrate();
+            body.Integrate(TickRate);
             body.Update();
-            Collision.ResolveAll(Bodies);
+            Collision.CheckAllObjects(Bodies.Cast<object>().ToList());
         }
 
         foreach (RigidBody body in RemoveQueue) { Bodies.Remove(body); } // Remove aged particles
