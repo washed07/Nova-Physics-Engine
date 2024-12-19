@@ -36,7 +36,7 @@ public struct Shape
         Vect[] vertices = new Vect[sides];
         for (int i = 0; i < sides; i++)
         {
-            float angle = Num.Pi                  * 2                      * i / sides;
+            float angle = Num.PI                  * 2                      * i / sides;
             vertices[i] = new Vect(Num.Cos(angle) * radius, Num.Sin(angle) * radius);
         }
 
